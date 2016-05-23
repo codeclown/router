@@ -13,13 +13,13 @@ Illustrative example:
 const router = new Router();
 
 const ensurePersonIsLoaded = params => {
-    return getPerson(params.name)
+    return getPerson(params.id)
         .then(person => state.person = person);
 };
 
 router.setRoutes({
     '/': HomeView,
-    '/person/:name': {
+    '/person/:id': {
         before: ensurePersonIsLoaded,
         '/': params => PersonView,
         '/edit': params => EditPersonView
