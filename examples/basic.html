@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <meta charset="utf-8">
+        <title></title>
+    </head>
+    <body>
+        <div id="app"></div>
+
+        <script src="../dist/router.js"></script>
+        <script>
+
+/*
+ * Basic example
+ *
+ * This is a minimal, vanilla example of how the router can be utilized.
+ * Route handlers can return anything and whatever they return can be
+ * utilized by `afterParse`.
+ */
+
+const state = {};
+const app = document.getElementById('app');
+const router = new Router();
+
+const ensurePersonIsLoaded = params => {
+    if(!state.person || state.person.id !== params.id) {
+        return getPerson(params.id)
+            .then(person => state.person = person);
+    }
+};
+
+router.setRoutes({
+
+    // Render simple view
+    '/': () => el('div', 'Hello!'),
+    '/person/:id': {
+        before: ensurePersonIsLoaded,
+        '/': params => {
+            const div = el('div');
+
+            // At this point person has been loaded
+            div.appendChild(el('div', state.person.name));
+
+            div.appendChild(el('a', { href: '#/' }, 'Edit profile'));
+            return div;
+        },
+        '/edit': params => el('input', { value: state.person.name })
+    }
+});
+
+router.setAfterParse(view => {
+    app.innerHTML = '';
+    app.appendChild(view);
+});
+
+router.listen();
+
+// Helper for creating elements
+function el(tag, attributes, content) {
+    const element = document.createElement(tag);
+    if(attributes) {
+        for(let key in attributes) {
+            if(attributes.hasOwnProperty(key)) {
+                element[key] = attributes[key];
+            }
+        }
+    }
+    if(typeof content !== 'undefined') element.innerHTML = content;
+    return element;
+}
+
+        </script>
+    </body>
+</html>
