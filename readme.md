@@ -2,6 +2,8 @@
 
 Promise-powered routing independent of view framework.
 
+**Not ready for production!** This library is only a concept at this point and is not ready for serious use.
+
 
 ## Usage
 
