@@ -2,7 +2,7 @@
 
 const Promise = require('bluebird');
 const test = require('tape');
-const Router = require('../');
+const Router = require('../lib/router');
 
 const handlers = {};
 for(let i = 97; i <= 107; i++) {
@@ -71,10 +71,11 @@ test('flattenRouteHash', t => {
     t.deepEqual(Router.flattenRouteHash({
         '/': {
             '/': handlers.a,
-            before: handlers.b
+            before: handlers.b,
+            after: handlers.c
         }
     }), {
-        '/': { handler: handlers.a, before: [handlers.b] }
+        '/': { handler: handlers.a, before: [handlers.b], after: [handlers.c] }
     }, 'should pass hooks');
 
     t.deepEqual(Router.flattenRouteHash({
@@ -203,27 +204,84 @@ test('should handle hooks (Promises)', t => {
         });
 });
 
-test('should run afterParse after handler', t => {
+test('should run render after handler', t => {
     const router = new Router();
 
-    const requests = [];
-    const afterParse = returnValueFromHandler => requests[requests.length] = returnValueFromHandler;
+    const object = {};
 
     router.setRoutes({
-        '/': () => 'could return home view here',
-        '/:name': params => `name: ${params.name.toUpperCase()}`
+        '/:name': params => {
+            object.name = params.name.toUpperCase();
+            return object;
+        },
+        render: returnedObject => {
+            t.ok(object === returnedObject, 'should alter same object');
+            returnedObject.rendered = true;
+        }
     });
 
-    router.setAfterParse(afterParse);
-
     return Promise.resolve()
-        .then(() => router.parseRoute('/'))
         .then(() => router.parseRoute('/phil'))
         .then(() => {
-            t.deepEqual(requests, [
-                'could return home view here',
-                'name: PHIL'
-            ]);
+            t.deepEqual(object, {
+                name: 'PHIL',
+                rendered: true
+            });
+            t.end();
+        });
+});
+
+test('should support nested renderers', t => {
+    const router = new Router();
+
+    const object = {};
+
+    router.setRoutes({
+        '/:name': {
+            '/': params => {
+                object.name = params.name.toUpperCase();
+                return object;
+            },
+            render: returnedObject => {
+                t.ok(object === returnedObject, 'should alter same object');
+                returnedObject.renderedAtName = true;
+                return returnedObject;
+            }
+        },
+        render: returnedObject => {
+            t.ok(object === returnedObject, 'should alter same object');
+            returnedObject.renderedAtRoot = true;
+        }
+    });
+
+    return Promise.resolve()
+        .then(() => router.parseRoute('/phil'))
+        .then(() => {
+            t.deepEqual(object, {
+                name: 'PHIL',
+                renderedAtName: true,
+                renderedAtRoot: true
+            });
+            t.end();
+        });
+});
+
+test('should run notFound when route is not found', t => {
+    const router = new Router();
+
+    const handlers = [];
+
+    router.setRoutes({
+        notFound: () => handlers[handlers.length] = '404',
+        '/bugs': () => handlers[handlers.length] = 'found'
+    });
+
+    return Promise.resolve()
+        .then(() => router.parseRoute('/dreams'))
+        .then(() => router.parseRoute('/bugs'))
+        .then(() => router.parseRoute('/'))
+        .then(() => {
+            t.deepEqual(handlers, ['404', 'found', '404']);
             t.end();
         });
 });
