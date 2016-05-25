@@ -81,10 +81,11 @@ test('flattenRouteHash', t => {
     t.deepEqual(Router.flattenRouteHash({
         '/': {
             before: handlers.b,
-            '/': handlers.a
+            '/': handlers.a,
+            after: handlers.c
         }
     }), {
-        '/': { handler: handlers.a, before: [handlers.b] }
+        '/': { handler: handlers.a, before: [handlers.b], after: [handlers.c] }
     }, 'should pass hooks (order irrevelant)');
 
     t.deepEqual(Router.flattenRouteHash({
@@ -96,7 +97,7 @@ test('flattenRouteHash', t => {
     }), {
         '/': { handler: handlers.b, before: [handlers.a] },
         '/foobar': { handler: handlers.c, before: [handlers.a] }
-    }, 'should inherit hooks');
+    }, 'should inherit before hooks');
 
     t.deepEqual(Router.flattenRouteHash({
         '/': {
@@ -114,7 +115,25 @@ test('flattenRouteHash', t => {
         '/': { handler: handlers.b, before: [handlers.a] },
         '/foo/bar': { handler: handlers.d, before: [handlers.a] },
         '/foo/baz': { handler: handlers.f, before: [handlers.a, handlers.e] }
-    }, 'should inherit multiple hooks');
+    }, 'should inherit multiple before hooks');
+
+    t.deepEqual(Router.flattenRouteHash({
+        '/': {
+            '/': handlers.a,
+            '/foobar': {
+                after: handlers.b,
+                '/': handlers.c,
+                '/deeper': {
+                    after: handlers.d,
+                    '/': handlers.e
+                }
+            }
+        }
+    }), {
+        '/': { handler: handlers.a },
+        '/foobar': { handler: handlers.c, after: [handlers.b] },
+        '/foobar/deeper': { handler: handlers.e, after: [handlers.b, handlers.d] }
+    }, 'should inherit after hooks');
 
     t.end();
 });
@@ -151,10 +170,12 @@ test('should handle hooks', t => {
 
     router.setRoutes({
         before: () => requests[requests.length] = 'before all',
+        after: () => requests[requests.length] = 'after all', // Should not be called because route is never left
         '/': () => requests[requests.length] = 'home',
         '/foo': () => requests[requests.length] = 'foo',
         '/:name': {
             before: params => requests[requests.length] = `before ${params.name}`,
+            after: () => requests[requests.length] = `after :name`,
             '/': params => requests[requests.length] = `${params.name}`,
             '/x': params => requests[requests.length] = `${params.name}/x`
         }
@@ -165,12 +186,14 @@ test('should handle hooks', t => {
         .then(() => router.parseRoute('/foo'))
         .then(() => router.parseRoute('/phil'))
         .then(() => router.parseRoute('/phil/x'))
+        .then(() => router.parseRoute('/foo'))
         .then(() => {
             t.deepEqual(requests, [
                 'before all', 'home',
                 'before all', 'foo',
                 'before all', 'before phil', 'phil',
-                'before all', 'before phil', 'phil/x'
+                'before all', 'before phil', 'phil/x',
+                'after :name', 'before all', 'foo'
             ]);
             t.end();
         });
@@ -187,6 +210,7 @@ test('should handle hooks (Promises)', t => {
             '/': params => requests[requests.length] = params.name,
             '/foo': {
                 before: () => Promise.delay(200).then(() => requests[requests.length] = 'before foo'),
+                after: () => Promise.delay(200).then(() => requests[requests.length] = 'after foo'),
                 '/': params => requests[requests.length] = `${params.name}/foo`,
             }
         }
@@ -195,10 +219,12 @@ test('should handle hooks (Promises)', t => {
     return Promise.resolve()
         .then(() => router.parseRoute('/phil'))
         .then(() => router.parseRoute('/phil/foo'))
+        .then(() => router.parseRoute('/phil'))
         .then(() => {
             t.deepEqual(requests, [
                 'before', 'phil',
-                'before', 'before foo', 'phil/foo'
+                'before', 'before foo', 'phil/foo',
+                'after foo', 'before', 'phil'
             ]);
             t.end();
         });
