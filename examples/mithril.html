@@ -2,11 +2,13 @@
 <html>
     <head>
         <meta charset="utf-8">
-        <title></title>
+        <title>Router</title>
     </head>
     <body>
         <div id="app"></div>
 
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/fetch/1.0.0/fetch.min.js"></script>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/mithril/0.2.5/mithril.min.js"></script>
         <script src="../dist/router.js"></script>
         <script>
 
@@ -46,16 +48,13 @@ function renderApp(view) {
 }
 
 function home() {
-    return {
-        view: controller => m('p', 'This is home')
-    };
+    return { view: controller => m('p', 'This is home') };
 }
 
 function ensureUsersAreLoaded() {
-    return fetch('http://jsonplaceholder.typicode.com/users', { json: true })
-        .then(users => {
-            state.users = users;
-        });
+    return fetch('http://jsonplaceholder.typicode.com/users')
+        .then(response => response.json())
+        .then(users => state.users = users);
 }
 
 function clearUsersFromState() {
@@ -65,7 +64,7 @@ function clearUsersFromState() {
 function showUsers() {
     return {
         view: controller => m('ul', state.users.map(user => m('li', user.name)))
-    }
+    };
 }
 
 m.mount(document.getElementById('app'), {

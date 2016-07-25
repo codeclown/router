@@ -12,30 +12,68 @@ Illustrative example:
 ```
 const router = new Router();
 
-const ensurePersonIsLoaded = params => {
-    return getPerson(params.id)
-        .then(person => state.person = person);
-};
+router.setRoutes({
+    '/': HomeView,
+    '/person/:id': {
+        '/': PersonView,
+        '/edit': EditPersonView
+    },
+    render: renderApp
+});
+
+router.listen();
+
+function renderApp(view) {
+    // view is now HomeView, PersonView or EditPersonView
+    viewEngine.render(view);
+}
+```
+
+Attach hooks to run before and after routes. Promises are supported.
+
+```
+const ensurePersonIsLoaded = params => getPerson(params.id)
+    .then(person => state.dispatch('person_loaded', person));
 
 router.setRoutes({
     '/': HomeView,
     '/person/:id': {
         before: ensurePersonIsLoaded,
-        '/': params => PersonView,
-        '/edit': params => EditPersonView
+        '/': PersonView,
+        '/edit': EditPersonView
     }
 });
-
-router.setAfterParse(view => {
-    viewEngine.render(view);
-});
-
-router.listen();
 ```
 
-In this example `viewEngine` receives a view from the route handlers. Route handlers are only ran after any `before`-hooks have been ran.
+Nested views:
 
-See [examples/basic.html](#) for a more elaborate version.
+```
+router.setRoutes({
+    '/': HomeView,
+    '/person/:id': {
+        '/': PersonView,
+        render: renderPerson
+    },
+    render: renderApp
+});
+
+function PersonView(params) {
+    return 'Text about person';
+}
+
+function renderPerson(view) {
+    return m('.person-container', view);
+}
+
+function renderApp(view) {
+    return m('.app-container', view);
+}
+
+// Visiting /person/123 would yield something like this:
+// m('.app-container', m('.person-container', 'Text about person'))
+```
+
+See [examples/mithril.html](examples/mithril.html) for a working, more elaborate example.
 
 
 ## Credits
