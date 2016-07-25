@@ -9,7 +9,7 @@ Promise-powered routing independent of view framework.
 
 Illustrative example:
 
-```
+```javascript
 const router = new Router();
 
 router.setRoutes({
@@ -31,7 +31,7 @@ function renderApp(view) {
 
 Attach hooks to run before and after routes. Promises are supported.
 
-```
+```javascript
 const ensurePersonIsLoaded = params => getPerson(params.id)
     .then(person => state.dispatch('person_loaded', person));
 
@@ -47,7 +47,7 @@ router.setRoutes({
 
 Nested views:
 
-```
+```javascript
 router.setRoutes({
     '/': HomeView,
     '/person/:id': {
